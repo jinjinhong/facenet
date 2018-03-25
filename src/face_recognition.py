@@ -21,23 +21,30 @@ import align.detect_face
 
 IMAGES_ROOT_DIR = '../images/'
 
-TRAIN_ROOT_DIR = IMAGES_ROOT_DIR + 'train/'
-CLASSIFIER_ROOT_DIR = IMAGES_ROOT_DIR + 'classifier/'
-DETECT_ROOT_DIR = IMAGES_ROOT_DIR + 'detect/'
+TRAIN_DIR = IMAGES_ROOT_DIR + 'train/'
+TRAIN_MTCNN_DIR = IMAGES_ROOT_DIR + 'train_mtcnn/'
 
-CAPTURE_ROOT_DIR = IMAGES_ROOT_DIR + 'capture/'
-CAPTURE_REALTIME_DIR = CAPTURE_ROOT_DIR + 'realtime/'
+CLASSIFIER_DIR = IMAGES_ROOT_DIR + 'classifier/'
+DETECT_DIR = IMAGES_ROOT_DIR + 'detect/'
 
-CAPTURE_MTCNN_ROOT_DIR = IMAGES_ROOT_DIR + 'capture_mtcnn/'
-CAPTURE_MTCNN_REALTIME_DIR = CAPTURE_MTCNN_ROOT_DIR + 'realtime/'
+CAPTURE_DIR = IMAGES_ROOT_DIR + 'capture/'
+CAPTURE_REALTIME_DIR = CAPTURE_DIR + 'realtime/'
+
+CAPTURE_MTCNN_DIR = IMAGES_ROOT_DIR + 'capture_mtcnn/'
+CAPTURE_MTCNN_REALTIME_DIR = CAPTURE_MTCNN_DIR + 'realtime/'
 
 COLLECT_FACE_TIME_S = 10
-
 
 MS_MODEL = '../models/20170512-110547/'
 CLASSIFIER_FILENAME = '../models/classifier.pkl'
 
+
 def main(args):
+    mode = 'CLASSIFIER'
+
+    if not os.path.exists(CLASSIFIER_FILENAME):
+        mode = 'TRAIN'
+
     cap = cv2.VideoCapture(0)
     print('摄像头打开', '成功' if cap.isOpened() else '失败')
 
@@ -54,26 +61,40 @@ def main(args):
             facenet.load_model(MS_MODEL)
 
             while True:
+                key_code = cv2.waitKey(1)
+                if key_code == ord('c') or mode == 'TRAIN':    # 采集样本
+                    capture_train_samples(cap)
+
+                    if os.path.exists(TRAIN_MTCNN_DIR):
+                        shutil.rmtree(TRAIN_MTCNN_DIR)
+
+                    align_dataset_mtcnn(TRAIN_DIR, TRAIN_MTCNN_DIR, args)
+
+                    mode = 'TRAIN'
+                elif key_code == ord('q'):  # 退出程序
+                    break
+
                 if os.path.exists(CAPTURE_REALTIME_DIR):
                     shutil.rmtree(CAPTURE_REALTIME_DIR)
                 os.makedirs(CAPTURE_REALTIME_DIR)
 
-                _, frame = cap.read()
-                frame = cv2.flip(frame, 1, 0)  # 翻转以充当镜子
-                cv2.imshow('Capture Face Sample', frame)
+                data_dir = TRAIN_MTCNN_DIR
+                if mode == 'CLASSIFIER':
+                    _, frame = cap.read()
+                    frame = cv2.flip(frame, 1, 0)  # 翻转以充当镜子
+                    cv2.imshow('Capture Face Sample', frame)
 
-                if cv2.waitKey(1) == ord('q'):
-                    break
+                    cv2.imwrite('{dir}{filename}.jpg'.format(dir=CAPTURE_REALTIME_DIR, filename=current_time_string()), frame)
 
-                cv2.imwrite('{dir}{filename}.jpg'.format(dir=CAPTURE_REALTIME_DIR, filename=current_time_string()), frame)
+                    if os.path.exists(CAPTURE_MTCNN_REALTIME_DIR):
+                        shutil.rmtree(CAPTURE_MTCNN_REALTIME_DIR)
+                    align_dataset_mtcnn(CAPTURE_DIR, CAPTURE_MTCNN_DIR, args)
+                    if not os.path.exists(CAPTURE_MTCNN_REALTIME_DIR) or not os.listdir(CAPTURE_MTCNN_REALTIME_DIR):
+                        continue
 
-                if os.path.exists(CAPTURE_MTCNN_REALTIME_DIR):
-                    shutil.rmtree(CAPTURE_MTCNN_REALTIME_DIR)
-                align_dataset_mtcnn(CAPTURE_ROOT_DIR, CAPTURE_MTCNN_ROOT_DIR, args)
-                if not os.path.exists(CAPTURE_MTCNN_REALTIME_DIR) or not os.listdir(CAPTURE_MTCNN_REALTIME_DIR):
-                    continue
+                    data_dir = CAPTURE_MTCNN_DIR
 
-                dataset = facenet.get_dataset(CAPTURE_MTCNN_ROOT_DIR)
+                dataset = facenet.get_dataset(data_dir)
 
                 # 检查每个类别是否至少有一个训练图像
                 for cls in dataset:
@@ -105,7 +126,7 @@ def main(args):
 
                 classifier_filename_exp = os.path.expanduser(CLASSIFIER_FILENAME)
 
-                if False:
+                if mode == 'TRAIN':
                     # 训练分类器
                     print('训练分类器')
                     model = SVC(kernel='linear', probability=True)
@@ -118,8 +139,10 @@ def main(args):
                     with open(classifier_filename_exp, 'wb') as outfile:
                         pickle.dump((model, class_names), outfile)
                     print('保存分类器模型到文件 "%s"' % classifier_filename_exp)
-                else:
-                    output_dir = os.path.expanduser(CLASSIFIER_ROOT_DIR)
+
+                    mode = 'CLASSIFIER'
+                elif mode == 'CLASSIFIER':
+                    output_dir = os.path.expanduser(CLASSIFIER_DIR)
 
                     # 分类图像
                     with open(classifier_filename_exp, 'rb') as infile:
@@ -156,19 +179,15 @@ def main(args):
     cv2.destroyAllWindows()
 
 
-def capture_train_samples():
-    cap = cv2.VideoCapture(0)
-    print('摄像头打开', '成功' if cap.isOpened() else '失败')
-
-    if not cap.isOpened():
-        return
+def capture_train_samples(cap):
+    """采集用于人脸分类的样本"""
 
     while True:
         class_name = input('注：名字为空，退出该模块\n请输入名字：')
         if not class_name:
             break
 
-        class_name_dir = '{}{}/'.format(TRAIN_ROOT_DIR, class_name)
+        class_name_dir = '{}{}/'.format(TRAIN_DIR, class_name)
         if not os.path.exists(class_name_dir):
             os.makedirs(class_name_dir)
 
@@ -192,9 +211,6 @@ def capture_train_samples():
 
         print('类别 {} 样本数 {} 采集目录 {}'.format(
             class_name, sum([len(files) for _, _, files in os.walk(class_name_dir)]), os.path.abspath(class_name_dir)))
-
-    cap.release()
-    cv2.destroyAllWindows()
 
 
 def current_time_string():
@@ -298,7 +314,7 @@ def align_dataset_mtcnn(input_dir, output_dir, args, is_rectangle_face=False):
                             all_face_rectangle_filename = "{}{}".format(filename_base, file_extension)
                             cv2.imwrite(all_face_rectangle_filename, image)
                     else:
-                        print('Unable to align "%s"' % image_path)
+                        print('无法对齐 "%s"' % image_path)
 
     print('图像总数: %d' % nrof_images_total)
     print('成功对齐的图像数量: %d' % nrof_successfully_aligned)
