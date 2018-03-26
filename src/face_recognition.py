@@ -9,10 +9,10 @@ import facenet
 import os
 import sys
 import math
+import platform
 import pickle
 import random
 import shutil
-from time import sleep
 from datetime import datetime
 from sklearn.svm import SVC
 from scipy import misc
@@ -37,6 +37,8 @@ COLLECT_FACE_TIME_S = 10
 
 MS_MODEL = '../models/20170512-110547/'
 CLASSIFIER_FILENAME = '../models/classifier.pkl'
+
+CLASS_PROBABILITY_THRESHOLD = 0.9
 
 
 def main(args):
@@ -173,8 +175,11 @@ def main(args):
                         class_name = class_names[best_class_indices[i]]
                         class_probability = best_class_probabilities[i]
 
-                        if class_probability < 0.9:
+                        if class_probability < CLASS_PROBABILITY_THRESHOLD:
                             class_name = '未知'
+
+                        if platform.system() == 'Darwin':
+                            os.system('say %s' % class_name)
 
                         image_file = paths[i]
                         d = '%s%s/' % (output_dir, class_name)

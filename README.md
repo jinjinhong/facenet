@@ -6,24 +6,9 @@
 This is a TensorFlow implementation of the face recognizer described in the paper
 ["FaceNet: A Unified Embedding for Face Recognition and Clustering"](http://arxiv.org/abs/1503.03832). The project also uses ideas from the paper ["A Discriminative Feature Learning Approach for Deep Face Recognition"](http://ydwen.github.io/papers/WenECCV16.pdf) as well as the paper ["Deep Face Recognition"](http://www.robots.ox.ac.uk/~vgg/publications/2015/Parkhi15/parkhi15.pdf) from the [Visual Geometry Group](http://www.robots.ox.ac.uk/~vgg/) at Oxford.
 
-## 使用
-### 人脸检测
-``` bash
-python align/align_dataset_mtcnn.py images_align_mtcnn face_images --detect_multiple_faces True
-```
-### 人脸比较
-``` bash
-python compare.py ../models/20170512-110547 images_compare/ap_mtcnn/1.png images_compare/ap_mtcnn/2.png images_compare/ap_mtcnn/3.png images_compare/ap_mtcnn/4.png
-```
-### 人脸训练和分类（在自己的数据上）
-``` bash
-python classifier.py TRAIN images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
-python classifier.py CLASSIFY images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
-```
-
-## 应用
-### 人脸识别 face_recognition.py
-如果已经有模型的了，程序将自动进入实时分类的状态，现在设置的阈值是0.90的精确度，否则将被分类为未知。
+## 基于facenet的人脸识别DEMO
+### 人脸识别face_recognition.py 的功能
+如果已经有模型的了，程序将自动进入实时分类的状态，现在设置的阈值是0.90的精确度，否则将被分类为未知。如果是mac os系统还会语音说出类别名。
 按c键进入训练模式，跟着提示输入用户姓名，采集10秒的样本，开始上下左右转动头，什么也不输入将结束样本采集，接着执行训练，训练结束生成模型。
 按空格键将进入暂停模式。
 按q键将退出程序。
@@ -44,6 +29,25 @@ facenet
 │   ├── face_recognition.py
 ...
 ...
+```
+### 运行
+``` bash
+python face_recognition.py
+```
+
+## 使用
+### 人脸检测
+``` bash
+python align/align_dataset_mtcnn.py images_align_mtcnn face_images --detect_multiple_faces True
+```
+### 人脸比较
+``` bash
+python compare.py ../models/20170512-110547 images_compare/ap_mtcnn/1.png images_compare/ap_mtcnn/2.png images_compare/ap_mtcnn/3.png images_compare/ap_mtcnn/4.png
+```
+### 人脸训练和分类（在自己的数据上）
+``` bash
+python classifier.py TRAIN images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
+python classifier.py CLASSIFY images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
 ```
 
 ## Compatibility
