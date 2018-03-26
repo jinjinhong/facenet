@@ -57,8 +57,19 @@ def main(args):
 
             np.random.seed(seed=666)
 
+            print('创建mtcnn网络和加载参数')
+            with tf.Graph().as_default():
+                gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction)
+                _sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
+                with _sess.as_default():
+                    pnet, rnet, onet = align.detect_face.create_mtcnn(_sess, None)
+
             print('加载特征提取模型')
             facenet.load_model(MS_MODEL)
+
+            print('按c键将进入训练模式')
+            print('按空格键将进入暂停模式')
+            print('按q键将退出程序')
 
             while True:
                 key_code = cv2.waitKey(1)
@@ -68,9 +79,11 @@ def main(args):
                     if os.path.exists(TRAIN_MTCNN_DIR):
                         shutil.rmtree(TRAIN_MTCNN_DIR)
 
-                    align_dataset_mtcnn(TRAIN_DIR, TRAIN_MTCNN_DIR, args)
+                    align_dataset_mtcnn(pnet, rnet, onet, TRAIN_DIR, TRAIN_MTCNN_DIR, args)
 
                     mode = 'TRAIN'
+                elif key_code == 32:  # 暂停程序
+                    cv2.waitKey()
                 elif key_code == ord('q'):  # 退出程序
                     break
 
@@ -83,12 +96,13 @@ def main(args):
                     _, frame = cap.read()
                     frame = cv2.flip(frame, 1, 0)  # 翻转以充当镜子
                     cv2.imshow('Capture Face Sample', frame)
-
                     cv2.imwrite('{dir}{filename}.jpg'.format(dir=CAPTURE_REALTIME_DIR, filename=current_time_string()), frame)
 
                     if os.path.exists(CAPTURE_MTCNN_REALTIME_DIR):
                         shutil.rmtree(CAPTURE_MTCNN_REALTIME_DIR)
-                    align_dataset_mtcnn(CAPTURE_DIR, CAPTURE_MTCNN_DIR, args)
+
+                    align_dataset_mtcnn(pnet, rnet, onet, CAPTURE_DIR, CAPTURE_MTCNN_DIR, args)
+
                     if not os.path.exists(CAPTURE_MTCNN_REALTIME_DIR) or not os.listdir(CAPTURE_MTCNN_REALTIME_DIR):
                         continue
 
@@ -154,10 +168,7 @@ def main(args):
                     best_class_indices = np.argmax(predictions, axis=1)
                     best_class_probabilities = predictions[np.arange(len(best_class_indices)), best_class_indices]
 
-                    print('best_class_indices', best_class_indices, len(best_class_indices))
-                    print('best_class_probabilities', best_class_probabilities, len(best_class_probabilities))
                     print('class_names', class_names, len(class_names))
-                    print('labels', labels, len(labels))
                     for i in range(len(best_class_indices)):
                         class_name = class_names[best_class_indices[i]]
                         class_probability = best_class_probabilities[i]
@@ -217,20 +228,12 @@ def current_time_string():
     return datetime.now().strftime('%Y%m%d_%H%M%S_%f')
 
 
-def align_dataset_mtcnn(input_dir, output_dir, args, is_rectangle_face=False):
+def align_dataset_mtcnn(pnet, rnet, onet, input_dir, output_dir, args, is_rectangle_face=False):
     output_dir = os.path.expanduser(output_dir)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     dataset = facenet.get_dataset(input_dir)
-
-    print('创建网络和加载参数')
-
-    with tf.Graph().as_default():
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_memory_fraction)
-        sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, log_device_placement=False))
-        with sess.as_default():
-            pnet, rnet, onet = align.detect_face.create_mtcnn(sess, None)
 
     minsize = 20  # minimum size of face
     threshold = [0.6, 0.7, 0.7]  # three steps's threshold
