@@ -6,6 +6,46 @@
 This is a TensorFlow implementation of the face recognizer described in the paper
 ["FaceNet: A Unified Embedding for Face Recognition and Clustering"](http://arxiv.org/abs/1503.03832). The project also uses ideas from the paper ["A Discriminative Feature Learning Approach for Deep Face Recognition"](http://ydwen.github.io/papers/WenECCV16.pdf) as well as the paper ["Deep Face Recognition"](http://www.robots.ox.ac.uk/~vgg/publications/2015/Parkhi15/parkhi15.pdf) from the [Visual Geometry Group](http://www.robots.ox.ac.uk/~vgg/) at Oxford.
 
+## 使用
+### 人脸检测
+``` bash
+python align/align_dataset_mtcnn.py images_align_mtcnn face_images --detect_multiple_faces True
+```
+### 人脸比较
+``` bash
+python compare.py ../models/20170512-110547 images_compare/ap_mtcnn/1.png images_compare/ap_mtcnn/2.png images_compare/ap_mtcnn/3.png images_compare/ap_mtcnn/4.png
+```
+### 人脸训练和分类（在自己的数据上）
+``` bash
+python classifier.py TRAIN images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
+python classifier.py CLASSIFY images_classifier_mtcnn ../models/20170512-110547 ../models/classifier.pkl
+```
+
+## 应用
+### 人脸识别 face_recognition.py
+如果已经有模型的了，程序将自动进入实时分类的状态，现在设置的阈值是0.90的精确度，否则将被分类为未知。
+按c键进入训练模式，跟着提示输入用户姓名，采集10秒的样本，开始上下左右转动头，什么也不输入将结束样本采集，接着执行训练，训练结束生成模型。
+按空格键将进入暂停模式。
+按q键将退出程序。
+### 目录结构
+```
+facenet
+├── images
+│   ├── train           采集用于训练的样本
+│   ├── train_mtcnn     裁剪人脸
+│   ├── capture         实时捕捉
+│   ├── capture_mtcnn   裁剪人脸
+│   └── classifier      分类识别
+├── models
+│   ├── 20170511-185253 CASIA-WebFace
+│   ├── 20170512-110547 MS-Celeb-1M
+│   └── classifier.pkl  分类模型
+├── src
+│   ├── face_recognition.py
+...
+...
+```
+
 ## Compatibility
 The code is tested using Tensorflow r1.2 under Ubuntu 14.04 with Python 2.7 and Python 3.5. The test cases can be found [here](https://github.com/davidsandberg/facenet/tree/master/test) and the results can be found [here](http://travis-ci.org/davidsandberg/facenet).
 
